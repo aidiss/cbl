@@ -2,12 +2,15 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"log"
 	"math"
 	"math/rand"
 	"time"
 )
+
+const MineralCount = 10
 
 type MineralType struct {
 	Name          string
@@ -27,11 +30,18 @@ type Mineral struct {
 	Fractures int
 }
 
-
 type Job struct {
 	action  string
 	mineral *Mineral
 	Status  string
+}
+
+func (job *Job) String() string {
+	return fmt.Sprintf("JOB %v %v %v", job.action, job.Status, job.mineral)
+}
+
+func (mineral *Mineral) String() string {
+	return fmt.Sprintf("MINERAL %v %v %v", mineral.State, mineral.Type, mineral.Fractures)
 }
 
 // Ready To be set by manager
@@ -82,10 +92,11 @@ type Factory struct {
 func (f Factory) FractureMineral(m *Mineral) error {
 	log.Println("FractureMineral", m)
 	if m.Fractures*2 > m.Type.FractureLimit {
-		log.Println("Not able to fracture, over the limit")
-		return errors.New("Problem")
+		log.Println("FractureMineral. Not able to fracture, over the limit")
+		return errors.New("fractureMineral. Not able to fracture, over the limit")
 	} else {
 		m.Fractures *= 2
+		log.Println("FractureMineral. Mineral fractured successfully.")
 		return nil
 	}
 }
@@ -99,10 +110,8 @@ func (f *Factory) Step() {
 	// Attempt to process a job
 
 	log.Println("Factory. is making a step")
-	for i, job := range f.jobQueue.jobs {
-		log.Println(i, job)
+	for _, job := range f.jobQueue.jobs {
 		if job.Status == "READY" {
-			log.Println("Factory. READY job found. Making Ready")
 			err := job.Started()
 			if err != nil {
 				log.Println("ERROR", err)
@@ -114,8 +123,8 @@ func (f *Factory) Step() {
 				log.Println("ERROR", err)
 				return
 			}
+			err = job.Finished()
 
-			log.Println("New status", job.Status)
 		}
 	}
 }
@@ -129,15 +138,13 @@ type Manager struct {
 func (m *Manager) Step() {
 	log.Println("Manager. Step")
 	log.Println("Manager. Iterating jobs")
-	for i, job := range m.jobQueue.jobs {
-		log.Println(i, job)
+	for _, job := range m.jobQueue.jobs {
 		if job.Status == "NEW" {
 			log.Println("Manager. NEW job found. Making Ready")
 			err := job.Ready()
 			if err != nil {
 				log.Println("ERROR", err)
 			}
-			log.Println("NEW STATUS", job.Status)
 		}
 	}
 
@@ -154,7 +161,7 @@ func (m *MineralTypeDB) AddMineralType(mineralType MineralType) {
 }
 
 func (m *MineralTypeDB) GetTypeByName(mineralName string) MineralType {
-	log.Println("GetTypeByName")
+	//log.Println("GetTypeByName")
 	return m.mineralTypes[mineralName]
 }
 
@@ -190,7 +197,7 @@ func main() {
 	jq := JobQueue{}
 	supportedMineralTypeNames := []string{"diamond", "topaz"}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < MineralCount; i++ {
 		mineralTypeName := supportedMineralTypeNames[rand.Intn(len(supportedMineralTypeNames))]
 		mineralType := mineralTypeDB.GetTypeByName(mineralTypeName)
 
